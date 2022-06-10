@@ -20,30 +20,36 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"manual","top_n_per_article":-1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.json"};
   </script>
 
-  <meta name="description" content="Do not go gentle into that good night">
-<meta property="og:type" content="website">
-<meta property="og:title" content="wanbess的杂物间">
-<meta property="og:url" content="http://example.com/index.html">
+  <meta name="description" content="一，概述ziplist是一种特殊的数据结构，它将链式的数据排列成内存中连续空间，并通过相应的编码形式实现了高效的内存压缩。在原理上，ziplist像是链表和线性数组的一种综合。 ziplist能存储字符串和整数，对于整数的编码，ziplist采用将其编码成实际的数字而不是字符系列。它允许实现stack类似的push 和 pop操作。时间复杂度为O(1)，但实际中由于需要对内存的再分配，所以近似时间">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis之ziplist">
+<meta property="og:url" content="http://example.com/2022/06/05/redis%E4%B9%8Bziplist/index.html">
 <meta property="og:site_name" content="wanbess的杂物间">
-<meta property="og:description" content="Do not go gentle into that good night">
+<meta property="og:description" content="一，概述ziplist是一种特殊的数据结构，它将链式的数据排列成内存中连续空间，并通过相应的编码形式实现了高效的内存压缩。在原理上，ziplist像是链表和线性数组的一种综合。 ziplist能存储字符串和整数，对于整数的编码，ziplist采用将其编码成实际的数字而不是字符系列。它允许实现stack类似的push 和 pop操作。时间复杂度为O(1)，但实际中由于需要对内存的再分配，所以近似时间">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/ziplist.bmp">
+<meta property="og:image" content="http://example.com/images/step1.bmp">
+<meta property="og:image" content="http://example.com/images/step4.bmp">
+<meta property="article:published_time" content="2022-06-05T07:02:33.177Z">
+<meta property="article:modified_time" content="2022-06-10T06:27:05.652Z">
 <meta property="article:author" content="wanbess">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/ziplist.bmp">
 
-<link rel="canonical" href="http://example.com/">
+<link rel="canonical" href="http://example.com/2022/06/05/redis%E4%B9%8Bziplist/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>wanbess的杂物间</title>
+  <title>redis之ziplist | wanbess的杂物间</title>
   
 
 
@@ -174,9 +180,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
+
+    
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -192,10 +199,9 @@
       <meta itemprop="name" content="wanbess的杂物间">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2022/06/05/redis%E4%B9%8Bziplist/" class="post-title-link" itemprop="url">redis之ziplist</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          redis之ziplist
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -225,7 +231,7 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <h2 id="一，概述"><a href="#一，概述" class="headerlink" title="一，概述"></a>一，概述</h2><p>ziplist是一种特殊的数据结构，它将链式的数据排列成内存中连续空间，并通过相应的编码形式实现了高效的内存压缩。在原理上，ziplist像是链表和线性数组的一种综合。</p>
+        <h2 id="一，概述"><a href="#一，概述" class="headerlink" title="一，概述"></a>一，概述</h2><p>ziplist是一种特殊的数据结构，它将链式的数据排列成内存中连续空间，并通过相应的编码形式实现了高效的内存压缩。在原理上，ziplist像是链表和线性数组的一种综合。</p>
 <p>ziplist能存储字符串和整数，对于整数的编码，ziplist采用将其编码成实际的数字而不是字符系列。它允许实现stack类似的push 和 pop操作。时间复杂度为O(1)，但实际中由于需要对内存的再分配，所以近似时间复杂度为O(N)。</p>
 <h2 id="二，基本结构"><a href="#二，基本结构" class="headerlink" title="二，基本结构"></a>二，基本结构</h2><p>ziplist的内部结构从头到尾包含以下几个部分： **zlbytes  zltail zllen entry zlend **  </p>
 <h3 id="zlbytes"><a href="#zlbytes" class="headerlink" title="zlbytes"></a>zlbytes</h3><p>是一个无符号整型，代表整个ziplist结构所占内存的大小。能再O(1)时间内取得并修改ziplist的大小。</p>
@@ -372,21 +378,23 @@
 <hr>
 <p><strong>参考:</strong>  <a target="_blank" rel="noopener" href="https://github.com/redis/redis/blob/unstable/src/ziplist.c">https://github.com/redis/redis/blob/unstable/src/ziplist.c</a></p>
 
-      
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
+
+        
+
+
+        
       </footer>
+    
   </article>
   
   
-  
-
-
   
 
 
@@ -439,6 +447,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%EF%BC%8C%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一，概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%EF%BC%8C%E5%9F%BA%E6%9C%AC%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">二，基本结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#zlbytes"><span class="nav-number">2.1.</span> <span class="nav-text">zlbytes</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zltail"><span class="nav-number">2.2.</span> <span class="nav-text">zltail</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zllen"><span class="nav-number">2.3.</span> <span class="nav-text">zllen</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#zlend"><span class="nav-number">2.4.</span> <span class="nav-text">zlend</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#entry"><span class="nav-number">2.5.</span> <span class="nav-text">entry</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%EF%BC%8C%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="nav-number">3.</span> <span class="nav-text">三，源码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1%EF%BC%8C%E7%BC%96%E7%A0%81%E7%9B%B8%E5%85%B3"><span class="nav-number">3.1.</span> <span class="nav-text">1，编码相关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2%EF%BC%8C%E8%A7%A3%E7%A0%81%E7%9B%B8%E5%85%B3"><span class="nav-number">3.2.</span> <span class="nav-text">2，解码相关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3%EF%BC%8C%E5%88%9B%E5%BB%BAziplist"><span class="nav-number">3.3.</span> <span class="nav-text">3，创建ziplist</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4%EF%BC%8C%E5%88%A0%E9%99%A4ziplist"><span class="nav-number">3.4.</span> <span class="nav-text">4，删除ziplist</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#5%EF%BC%8C%E6%8F%92%E5%85%A5entry"><span class="nav-number">3.5.</span> <span class="nav-text">5，插入entry</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#6%EF%BC%8C%E8%BF%9E%E9%94%81%E5%BC%8F%E6%9B%B4%E6%96%B0"><span class="nav-number">3.6.</span> <span class="nav-text">6，连锁式更新</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#7%EF%BC%8C%E4%B8%8B%E6%A0%87%E6%90%9C%E7%B4%A2"><span class="nav-number">3.7.</span> <span class="nav-text">7，下标搜索</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
