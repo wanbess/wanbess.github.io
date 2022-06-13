@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"manual","top_n_per_article":-1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.json"};
+  </script>
+
+  <meta name="description" content="一，概述redis的单元测试采用的是tcl。tcl全称工具命令语言(Tool Command Language)，它是一种解释性的脚本语言，由其自身的解释器，它被嵌入到开发应用程序的组合，可在 Unix、Windows 和 Apple Macintosh 操作系统上跨平台运行。本文介绍redis是如何使用tcl来进行单机和集群的单元测试。本文使用的redis版本为3.0.0,tcl版本为8.7。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis之tcl单元测试">
+<meta property="og:url" content="http://example.com/posts/16dc2151.html">
+<meta property="og:site_name" content="wanbess的杂物间">
+<meta property="og:description" content="一，概述redis的单元测试采用的是tcl。tcl全称工具命令语言(Tool Command Language)，它是一种解释性的脚本语言，由其自身的解释器，它被嵌入到开发应用程序的组合，可在 Unix、Windows 和 Apple Macintosh 操作系统上跨平台运行。本文介绍redis是如何使用tcl来进行单机和集群的单元测试。本文使用的redis版本为3.0.0,tcl版本为8.7。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/images/redis-server.svg">
+<meta property="article:published_time" content="2022-06-13T09:28:58.046Z">
+<meta property="article:modified_time" content="2022-06-13T14:52:58.283Z">
+<meta property="article:author" content="wanbess">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/images/redis-server.svg">
+
+<link rel="canonical" href="http://example.com/posts/16dc2151.html">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis之tcl单元测试 | wanbess的杂物间</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">wanbess的杂物间</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-trash">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>垃圾箱</a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/posts/16dc2151.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="wanbess">
+      <meta itemprop="description" content="Do not go gentle into that good night">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="wanbess的杂物间">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis之tcl单元测试
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2022-06-13 17:28:58 / 修改时间：22:52:58" itemprop="dateCreated datePublished" datetime="2022-06-13T17:28:58+08:00">2022-06-13</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="一，概述"><a href="#一，概述" class="headerlink" title="一，概述"></a>一，概述</h2><p>redis的单元测试采用的是tcl。tcl全称工具命令语言(Tool Command Language)，它是一种解释性的脚本语言，由其自身的解释器，它被嵌入到开发应用程序的组合，可在 Unix、Windows 和 Apple Macintosh 操作系统上跨平台运行。本文介绍redis是如何使用tcl来进行单机和集群的单元测试。本文使用的redis版本为3.0.0,tcl版本为8.7。</p>
+<h2 id="二，测试流程"><a href="#二，测试流程" class="headerlink" title="二，测试流程"></a>二，测试流程</h2><p>在官网下载并解压redis并完成编译后，若成功则可以看到终端上提示”Hint: It’s a good idea to run ‘make test”。再次运行命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ make <span class="built_in">test</span></span><br></pre></td></tr></table></figure>
+
+<p>在src&#x2F;Makefile中，test命令调用的是根目录的runtest</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">test: <span class="variable">$(REDIS_SERVER_NAME)</span> <span class="variable">$(REDIS_CHECK_AOF_NAME)</span></span></span><br><span class="line">	@(cd ..; ./runtest)</span><br></pre></td></tr></table></figure>
+
+<p>runtest实际调用的test_helper.tcl</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$TCLSH</span> tests/test_helper.tcl $*</span><br></pre></td></tr></table></figure>
+
+<p>在test_helper.tcl的all_tests列表存储了所有待测试的单元文件，定义了测试时的一些全局变量选项如端口号，是否检测内存泄漏，超时时间等。</p>
+<figure class="highlight tcl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">proc</span><span class="title"> execute_tests</span> name &#123;</span><br><span class="line">    <span class="keyword">set</span> path <span class="string">&quot;tests/$name.tcl&quot;</span></span><br><span class="line">    <span class="keyword">set</span> ::curfile <span class="variable">$path</span></span><br><span class="line">    <span class="keyword">source</span> <span class="variable">$path</span></span><br><span class="line">    send_data_packet <span class="variable">$::test_server_fd</span> done <span class="string">&quot;$name&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>测试启动有两种模式：client模式和client-server模式。对于client-server模式，从test_server_main入口执行</p>
+<figure class="highlight tcl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">proc</span><span class="title"> test_server_main</span> &#123;&#125; &#123;</span><br><span class="line">    cleanup</span><br><span class="line">    <span class="keyword">set</span> tclsh [<span class="keyword">info</span> nameofexecutable]</span><br><span class="line"><span class="comment">    # Open a listening socket, trying different ports in order to find a</span></span><br><span class="line"><span class="comment">    # non busy one.</span></span><br><span class="line">    <span class="keyword">set</span> port [find_available_port <span class="number">11111</span>]</span><br><span class="line">    <span class="keyword">if</span> &#123;!<span class="variable">$::quiet</span>&#125; &#123;</span><br><span class="line">        <span class="keyword">puts</span> <span class="string">&quot;Starting test server at port $port&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">socket</span> -server accept_test_clients -myaddr <span class="number">127.0</span><span class="number">.0</span><span class="number">.1</span> <span class="variable">$port</span></span><br><span class="line"></span><br><span class="line"><span class="comment">    # Start the client instances</span></span><br><span class="line">    <span class="keyword">set</span> ::clients_pids &#123;&#125;</span><br><span class="line">    <span class="keyword">set</span> start_port [<span class="keyword">expr</span> &#123;<span class="variable">$::port</span>+<span class="number">100</span>&#125;]</span><br><span class="line">    <span class="keyword">for</span> &#123;<span class="keyword">set</span> j <span class="number">0</span>&#125; &#123;<span class="variable">$j</span> &lt; <span class="variable">$::numclients</span>&#125; &#123;<span class="keyword">incr</span> j&#125; &#123;</span><br><span class="line">        <span class="keyword">set</span> start_port [find_available_port <span class="variable">$start_port</span>]</span><br><span class="line">        <span class="keyword">set</span> p [<span class="keyword">exec</span> <span class="variable">$tclsh</span> [<span class="keyword">info</span> script] &#123;*&#125;<span class="variable">$::argv</span> \</span><br><span class="line">            --client <span class="variable">$port</span> --port <span class="variable">$start_port</span> &amp;]</span><br><span class="line">        <span class="keyword">lappend</span> ::clients_pids <span class="variable">$p</span></span><br><span class="line">        <span class="keyword">incr</span> start_port <span class="number">10</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">    # Setup global state for the test server</span></span><br><span class="line">    <span class="keyword">set</span> ::idle_clients &#123;&#125;</span><br><span class="line">    <span class="keyword">set</span> ::active_clients &#123;&#125;</span><br><span class="line">    <span class="keyword">array</span> <span class="keyword">set</span> ::active_clients_task &#123;&#125;</span><br><span class="line">    <span class="keyword">array</span> <span class="keyword">set</span> ::clients_start_time &#123;&#125;</span><br><span class="line">    <span class="keyword">set</span> ::clients_time_history &#123;&#125;</span><br><span class="line">    <span class="keyword">set</span> ::failed_tests &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">    # Enter the event loop to handle clients I/O</span></span><br><span class="line">    <span class="keyword">after</span> <span class="number">100</span> test_server_cron</span><br><span class="line">    <span class="keyword">vwait</span> forever</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里涉及到tsl中socket系统调用，参考<a href="%5Bhttps://www.tcl.tk/man/tcl8.5/tutorial/Tcl40.html%5D">tcl官方网站</a></p>
+<blockquote>
+<p>Tcl I&#x2F;O is based on a the concept of channels. A channel is conceptually similar to a <code>FILE *</code> in C, or a stream in shell programming. The difference is that a channel may be a either a stream device like a file, or a connection oriented construct like a socket.</p>
+<p>If a socket channel is opened as a server, then the tcl program will ‘listen’ on that channel for another task to attempt to connect with it. When this happens, a new channel is created for that link (server-&gt; new client), and the tcl program continues to listen for connections on the original port number. In this way, a single Tcl server could be talking to several clients simultaneously.</p>
+<p>Look at the example, and you’ll see the <code>socket</code> command being used as both client and server, and the <code>fileevent</code> and <code>vwait</code> commands being used to control the I&#x2F;O between the client and server.</p>
+</blockquote>
+<p>实际上tcl创建了一些client实例和server进行socket通信，并监听在指定端口。test_server_main采用非阻塞的同步调用多进程模型，主进程负责注册并监听socket事件和io事件，同时创建连接池(一个活跃列表和空闲列表）来维护socket连接；子进程负责创建client实例执行相关tcl测试，测试结束向该端口中写入相关事件，主进程读取出相关数据并显示。</p>
+<p><img src="/images/redis-server.svg"></p>
+<p>而对于client，直接在一个主循环中测试client即可，循环时直接调用execute_testszh</p>
+<figure class="highlight tcl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">proc</span><span class="title"> execute_tests</span> name &#123;</span><br><span class="line">    <span class="keyword">set</span> path <span class="string">&quot;tests/$name.tcl&quot;</span></span><br><span class="line">    <span class="keyword">set</span> ::curfile <span class="variable">$path</span></span><br><span class="line">    <span class="keyword">source</span> <span class="variable">$path</span></span><br><span class="line">    send_data_packet <span class="variable">$::test_server_fd</span> done <span class="string">&quot;$name&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/42240f40.html" rel="prev" title="redis之ziplist">
+      <i class="fa fa-chevron-left"></i> redis之ziplist
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%EF%BC%8C%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一，概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8C%EF%BC%8C%E6%B5%8B%E8%AF%95%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">二，测试流程</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">wanbess</p>
+  <div class="site-description" itemprop="description">Do not go gentle into that good night</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives">
+          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">wanbess</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
